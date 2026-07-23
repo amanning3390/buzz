@@ -1,0 +1,25 @@
+Buzz for Hermes
+Copyright 2026 Adam Manning
+
+This distribution is a community-maintained derivative of Buzz, originally
+created by Block, Inc. and licensed under the Apache License, Version 2.0.
+Copyright 2026 Block, Inc.
+
+Material changes in this derivative include:
+
+- Native Hermes Agent ACP runtime discovery and launch support.
+- Live provider-aware model discovery and per-agent model selection.
+- Deterministic release-sidecar resolution.
+- An isolated, pinned Hermes compatibility runtime while upstream changes are
+  pending.
+- A zero-cost, Apple Silicon macOS source-build installer and fork-specific
+  application identity.
+
+Hermes Agent is created by Nous Research and licensed under the MIT License.
+The full Hermes Agent license is included at
+THIRD_PARTY_NOTICES/HERMES_AGENT_LICENSE.
+
+"Buzz" and names or marks associated with Block, Inc. are used only to identify
+the origin of the upstream work. "Hermes Agent" and names or marks associated
+with Nous Research are used only to identify the integrated runtime. This is
+not an official release of, or endorsed by, Block, Inc. or Nous Research.
