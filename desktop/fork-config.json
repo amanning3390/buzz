@@ -1,0 +1,14 @@
+{
+  "productName": "Buzz for Hermes",
+  "identifier": "xyz.hermeshub.buzz",
+  "deepLinkScheme": "buzz-hermes",
+  "appSupportName": "Buzz for Hermes",
+  "disableUpdater": true,
+  "runtime": {
+    "type": "native-hermes-acp",
+    "command": "hermes",
+    "args": ["acp"],
+    "skipConfiguredMcp": true,
+    "coldStartTimeoutSeconds": 45
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/amanning3390/hermes-agent.git",
+  "commit": "b405f0a16bd7e9ecd87fe1a9c8e9d0f3196b3ec1",
+  "tag": "buzz-acp-v0.19.0.1",
+  "protocol": "acp",
+  "officialMinVersion": null,
+  "requiredFeatures": [
+    "cross-provider-model-state",
+    "provider-qualified-session-set-model",
+    "skip-configured-mcp-startup"
+  ]
+}
