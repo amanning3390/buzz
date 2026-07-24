@@ -1,0 +1,52 @@
+name: Source Release (Buzz for Hermes)
+
+on:
+  push:
+    tags:
+      - 'v*-hermes.*'
+
+jobs:
+  verify-and-release:
+    runs-on: macos-14
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify tag matches checkout
+        run: |
+          TAG="$(git describe --tags --exact-match)"
+          echo "Release tag: $TAG"
+          git diff --quiet || (echo "Checkout is dirty" && exit 1)
+
+      - name: Run all CI gates
+        run: |
+          . ./bin/activate-hermit
+          PATH="$PWD/bin:$PATH" cargo fmt --all -- --check
+          PATH="$PWD/bin:$PATH" cargo clippy --workspace -- -D warnings
+          PATH="$PWD/bin:$PATH" cargo test -p buzz-acp
+
+      - name: Run desktop Hermes tests
+        run: |
+          . ./bin/activate-hermit
+          PATH="$PWD/bin:$PATH" cargo test \
+            --manifest-path desktop/src-tauri/Cargo.toml \
+            hermes -- --nocapture
+
+      - name: Manifest validation
+        run: python3 scripts/tests/test_manifest.py
+
+      - name: Apple Silicon source build smoke
+        run: |
+          . ./bin/activate-hermit
+          PATH="$PWD/bin:$PATH" cargo build \
+            --manifest-path desktop/src-tauri/Cargo.toml
+
+      - name: Create source release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

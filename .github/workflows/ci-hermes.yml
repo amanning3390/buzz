@@ -1,0 +1,78 @@
+name: CI (Buzz for Hermes)
+
+on:
+  push:
+    branches: [release/buzz-for-hermes]
+  pull_request:
+    branches: [release/buzz-for-hermes]
+
+concurrency:
+  group: ci-hermes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # --- Linux (free, fast) ---
+  rust-lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: . ./bin/activate-hermit
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace -- -D warnings
+      - run: cargo test -p buzz-acp
+
+  ts-lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: . ./bin/activate-hermit
+      - run: just desktop-install-ci
+      - run: pnpm check
+      - run: pnpm test
+
+  manifest-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/tests/test_manifest.py
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          shellcheck scripts/*.sh || true
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          ! grep -rn --include='*.rs' --include='*.ts' --include='*.sh' \
+            -E '(api_key|secret|password|token)\s*=\s*["\x27][a-zA-Z0-9]' \
+            . || (echo "Potential secret detected" && exit 1)
+
+  # --- macOS (free runner, slower) ---
+  desktop-hermes-rust:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - run: . ./bin/activate-hermit
+      - run: |
+          PATH="$PWD/bin:$PATH" cargo test \
+            --manifest-path desktop/src-tauri/Cargo.toml \
+            hermes -- --nocapture
+
+  apple-silicon-smoke:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - run: . ./bin/activate-hermit
+      - run: |
+          PATH="$PWD/bin:$PATH" cargo build \
+            --manifest-path desktop/src-tauri/Cargo.toml
