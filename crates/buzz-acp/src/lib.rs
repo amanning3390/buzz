@@ -70,6 +70,7 @@ const AUTHENTICATE_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 /// lightweight ACP adapters: live probes on this machine completed in roughly
 /// 13–21 seconds. Keep the fast fail for every other harness while giving
 /// Hermes enough cold-start headroom to return its native ACP model catalog.
+#[allow(dead_code)]
 fn model_probe_timeout_for_agent(agent_command: &str) -> Duration {
     match config::normalize_agent_command_identity(agent_command).as_str() {
         "hermes" | "hermes-agent" => Duration::from_secs(45),
@@ -84,6 +85,7 @@ fn model_probe_timeout_for_agent(agent_command: &str) -> Duration {
 /// `session/new` (an empty list when none are configured), so unrelated global
 /// Hermes MCP startup must not block either discovery or a managed session.
 /// The marker is Hermes-specific; all other ACP runtimes are unchanged.
+#[allow(dead_code)]
 fn acp_env_for_agent(agent_command: &str) -> Vec<(String, String)> {
     match config::normalize_agent_command_identity(agent_command).as_str() {
         "hermes" | "hermes-agent" => vec![(

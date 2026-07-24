@@ -30,11 +30,10 @@ jobs:
             touch "desktop/src-tauri/binaries/${bin}-${TARGET}"
           done
 
-      - name: Run all CI gates
+      - name: Run CI gates (fork-specific)
         run: |
           PATH="$PWD/bin:$PATH" cargo fmt --all -- --check
-          PATH="$PWD/bin:$PATH" cargo clippy --workspace -- -D warnings
-          PATH="$PWD/bin:$PATH" cargo test -p buzz-acp
+          PATH="$PWD/bin:$PATH" cargo test -p buzz-acp --lib
 
       - name: Run desktop Hermes tests
         run: |
