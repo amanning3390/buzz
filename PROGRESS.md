@@ -9,7 +9,7 @@
 | H1 | hermes-h1 | feat/acp-cross-provider-models | `1a7cbff5b` | 312/312 ACP pass | ✅ Committed |
 | H2 | hermes-h2 | fix/acp-skip-configured-mcp | `b9205bb48` | 315/315 ACP pass | ✅ Committed |
 | B1 | buzz-b1 | fix/release-sidecar-resolution | `91deae67` | 76/77 cargo (1 pre-existing) | ✅ Committed |
-| B2 | buzz-b2 | feat/native-hermes-acp-runtime | — | — | 🔄 In progress (subagent) |
+| B2 | buzz-b2 | feat/native-hermes-acp-runtime | `354281f1` | 597 buzz-acp + 5 desktop Hermes | ✅ Committed |
 
 ### Combined Hermes Tag
 
