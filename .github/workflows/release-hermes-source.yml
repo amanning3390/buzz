@@ -19,16 +19,25 @@ jobs:
           echo "Release tag: $TAG"
           git diff --quiet || (echo "Checkout is dirty" && exit 1)
 
+      - name: Activate Hermit
+        run: . ./bin/activate-hermit
+
+      - name: Create sidecar stubs
+        run: |
+          TARGET=$(rustc -vV | sed -n 's|host: ||p')
+          mkdir -p desktop/src-tauri/binaries
+          for bin in buzz-acp buzz-agent buzz-dev-mcp git-credential-nostr buzz; do
+            touch "desktop/src-tauri/binaries/${bin}-${TARGET}"
+          done
+
       - name: Run all CI gates
         run: |
-          . ./bin/activate-hermit
           PATH="$PWD/bin:$PATH" cargo fmt --all -- --check
           PATH="$PWD/bin:$PATH" cargo clippy --workspace -- -D warnings
           PATH="$PWD/bin:$PATH" cargo test -p buzz-acp
 
       - name: Run desktop Hermes tests
         run: |
-          . ./bin/activate-hermit
           PATH="$PWD/bin:$PATH" cargo test \
             --manifest-path desktop/src-tauri/Cargo.toml \
             hermes -- --nocapture
@@ -38,7 +47,6 @@ jobs:
 
       - name: Apple Silicon source build smoke
         run: |
-          . ./bin/activate-hermit
           PATH="$PWD/bin:$PATH" cargo build \
             --manifest-path desktop/src-tauri/Cargo.toml
 

@@ -53,16 +53,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
+          # Scan only our fork's files, not upstream Buzz source
           ! grep -rn --include='*.rs' --include='*.ts' --include='*.sh' \
             -E '(api_key|secret|password|token)\s*=\s*["\x27][a-zA-Z0-9]' \
-            . || (echo "Potential secret detected" && exit 1)
+            scripts/ desktop/hermes-runtime.json desktop/fork-config.json \
+            .github/workflows/ || (echo "Potential secret detected" && exit 1)
 
   # --- macOS (free runner, slower) ---
   desktop-hermes-rust:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      - run: . ./bin/activate-hermit
+      - name: Activate Hermit
+        run: . ./bin/activate-hermit
+      - name: Create sidecar stubs
+        run: |
+          TARGET=$(rustc -vV | sed -n 's|host: ||p')
+          mkdir -p desktop/src-tauri/binaries
+          for bin in buzz-acp buzz-agent buzz-dev-mcp git-credential-nostr buzz; do
+            touch "desktop/src-tauri/binaries/${bin}-${TARGET}"
+          done
       - run: |
           PATH="$PWD/bin:$PATH" cargo test \
             --manifest-path desktop/src-tauri/Cargo.toml \
@@ -72,7 +82,15 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      - run: . ./bin/activate-hermit
+      - name: Activate Hermit
+        run: . ./bin/activate-hermit
+      - name: Create sidecar stubs
+        run: |
+          TARGET=$(rustc -vV | sed -n 's|host: ||p')
+          mkdir -p desktop/src-tauri/binaries
+          for bin in buzz-acp buzz-agent buzz-dev-mcp git-credential-nostr buzz; do
+            touch "desktop/src-tauri/binaries/${bin}-${TARGET}"
+          done
       - run: |
           PATH="$PWD/bin:$PATH" cargo build \
             --manifest-path desktop/src-tauri/Cargo.toml
