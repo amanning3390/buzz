@@ -1,62 +1,64 @@
-# Buzz for Hermes — Execution Progress
+# Buzz for Hermes — Progress Log
 
-Updated: 2026-07-23
+## 2026-07-23: End-to-end execution
 
-## Current repositories
+### PR Status
 
-- Buzz clean worktree: `$HOME/buzz-hermes-release`
-  - upstream: `block/buzz`
-  - fork: `amanning3390/buzz`
-  - baseline: `710ed9fff57878a1d69f809b80a6ee0416c53fc4` (`v0.4.24` release head)
-- Hermes clean worktree: `$HOME/hermes-agent-buzz-acp`
-  - upstream: `NousResearch/hermes-agent`
-  - fork: `amanning3390/hermes-agent`
-  - baseline: `5be99b6fce16e7d5304196bc9faf3f0cdfc3031f`
+| PR | Repo | Branch | Commit | Tests | Status |
+|---|---|---|---|---|---|
+| H1 | hermes-h1 | feat/acp-cross-provider-models | `1a7cbff5b` | 312/312 ACP pass | ✅ Committed |
+| H2 | hermes-h2 | fix/acp-skip-configured-mcp | `b9205bb48` | 315/315 ACP pass | ✅ Committed |
+| B1 | buzz-b1 | fix/release-sidecar-resolution | `91deae67` | 76/77 cargo (1 pre-existing) | ✅ Committed |
+| B2 | buzz-b2 | feat/native-hermes-acp-runtime | — | — | 🔄 In progress (subagent) |
 
-## Status
+### Combined Hermes Tag
 
-- [x] Preserved tracked Buzz integration patch.
-- [x] Preserved tracked Hermes ACP patch, excluding unrelated MiniMax OAuth work.
-- [x] Preserved exactly three untracked source artifacts with AppleDouble metadata disabled.
-- [x] Verified SHA-256 manifests.
-- [x] Created public `amanning3390/buzz` fork.
-- [x] Created clean current-upstream Buzz and Hermes clones.
-- [ ] Hermes PR H1: cross-provider ACP model state.
-- [ ] Hermes PR H2: configured-MCP startup isolation.
-- [ ] Buzz PR B1: release sidecar resolution.
-- [ ] Buzz PR B2: native Hermes ACP integration.
-- [ ] Combined Hermes compatibility tag.
-- [ ] Fork-only zero-cost source installer and release path.
-- [ ] Fresh-install and live provider acceptance.
-- [ ] Public source release.
+- Tag: `buzz-acp-v0.19.0.1`
+- Commit: `b405f0a16bd7e9ecd87fe1a9c8e9d0f3196b3ec1`
+- Branch: `release/buzz-acp-compat` (H1 + H2 cherry-picked)
+- Tests: 317/317 ACP pass
 
-## Preservation artifacts
+### Fork Assembly (release/buzz-for-hermes)
 
-Directory: `$HOME/buzz-hermes-preservation`
+Commits on branch:
+1. `1fa27bb7` — docs: zero-cost Hermes fork execution plan
+2. `bd55ec87` — docs: identify community fork and upstream licenses
+3. `99039727` — fix(desktop): prefer packaged sidecars in release builds (B1 cherry-pick)
+4. `245f10d7` — feat: fork infrastructure (manifest, installer, identity)
+5. `e206fac2` — feat: CI workflows, update/repair/uninstall scripts
+6. `22179caa` — docs: README, setup, troubleshooting, build, release guides
 
-- `buzz-hermes-integration.patch`
-- `hermes-buzz-acp.patch`
-- `buzz-hermes-untracked-source.tar.gz`
-- `heads.txt`
-- `SHA256SUMS`
+Pending:
+- B2 cherry-pick (waiting for subagent completion)
+- Fresh-user acceptance test
+- Fork release tag
 
-## Verification log
+### Verification Commands
 
-### Preservation
+```bash
+# H1 verification
+cd ~/hermes-h1
+HERMES_HOME=/tmp/h1/home TMPDIR=/tmp/h1/tmp python -m pytest tests/acp/ -q
 
-- SHA-256 verification: PASS.
-- Untracked archive contents: exactly `hermes.png`, `hermes.rs`, and the implementation plan.
-- Patch files are non-empty.
+# H2 verification
+cd ~/hermes-h2
+HERMES_HOME=/tmp/h2/home TMPDIR=/tmp/h2/tmp python -m pytest tests/acp/ -q
 
-### Clean clones
+# B1 verification
+cd ~/buzz-b1
+PATH=$PWD/bin:$PATH cargo test --manifest-path desktop/src-tauri/Cargo.toml managed_agents::discovery
 
-- Buzz clean status: PASS.
-- Buzz `HEAD == upstream/main`: PASS.
-- Hermes clean status: PASS.
-- Hermes `HEAD == upstream/main`: PASS.
+# Combined Hermes tag
+cd ~/hermes-agent-buzz-acp
+HERMES_HOME=/tmp/compat/home python -m pytest tests/acp/ -q
 
-## Decisions
+# Manifest validation
+cd ~/buzz-fork-release
+python3 scripts/tests/test_manifest.py
+```
 
-- Public distribution remains $0: no Apple Developer Program, notarization, paid runner, hosted backend, or retained binary release artifact.
-- The supported macOS release is an immutable-tag local source build installed under `~/Applications`.
-- Upstream changes remain separated from fork-only branding, companion pinning, and installer code.
+### Notes
+
+- B1's `refresh_login_shell_path_clears_cache` test failure is pre-existing (PATH ordering from hermit activation, identical entries reordered). Not related to B1's sidecar changes.
+- H1's FTS5 failures on uv-managed Python 3.12.11 are pre-existing. Use `/opt/anaconda3/bin/python` (3.12.7) which has FTS5.
+- All work is local. No pushes.
