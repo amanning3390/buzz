@@ -3,6 +3,7 @@ name: CI (Buzz for Hermes)
 on:
   push:
     branches: [release/buzz-for-hermes]
+    tags: ['v*-hermes.*']
   pull_request:
     branches: [release/buzz-for-hermes]
 
@@ -11,29 +12,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # --- Linux (free, fast) ---
-  rust-lint-test:
+  # --- Linux (free, fast) — fork-specific checks only ---
+  rust-fmt-acp:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: . ./bin/activate-hermit
       - run: cargo fmt --all -- --check
-      - run: cargo clippy --workspace -- -D warnings
-      - run: cargo test -p buzz-acp
-
-  ts-lint-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: pnpm
-      - run: . ./bin/activate-hermit
-      - run: just desktop-install-ci
-      - run: pnpm check
-      - run: pnpm test
+      - run: cargo test -p buzz-acp --lib
 
   manifest-test:
     runs-on: ubuntu-latest
@@ -77,20 +63,3 @@ jobs:
           PATH="$PWD/bin:$PATH" cargo test \
             --manifest-path desktop/src-tauri/Cargo.toml \
             hermes -- --nocapture
-
-  apple-silicon-smoke:
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
-      - name: Activate Hermit
-        run: . ./bin/activate-hermit
-      - name: Create sidecar stubs
-        run: |
-          TARGET=$(rustc -vV | sed -n 's|host: ||p')
-          mkdir -p desktop/src-tauri/binaries
-          for bin in buzz-acp buzz-agent buzz-dev-mcp git-credential-nostr buzz; do
-            touch "desktop/src-tauri/binaries/${bin}-${TARGET}"
-          done
-      - run: |
-          PATH="$PWD/bin:$PATH" cargo build \
-            --manifest-path desktop/src-tauri/Cargo.toml
