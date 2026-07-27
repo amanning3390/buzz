@@ -139,6 +139,9 @@ fn build_initialize_params() -> serde_json::Value {
 pub struct AcpClient {
     /// The agent child process (kept alive to prevent zombie).
     child: Child,
+    /// Unix process group captured at spawn, retained after `child.id()` becomes
+    /// unavailable so descendants can still be terminated during fallback.
+    process_group_id: Option<u32>,
     /// Write end of the agent's stdin pipe.
     stdin: ChildStdin,
     /// Framed reader over the agent's stdout pipe (line-oriented, bounded).
@@ -403,10 +406,10 @@ impl AcpClient {
         // ensures subprocesses (MCP servers, tool processes) are cleaned up
         // rather than orphaned to init.
         //
-        // Falls back to start_kill() (direct child only) on non-Unix or if
-        // the child has been polled to completion (id() returns None).
-        match self.child.id() {
-            Some(pid) if kill_process_group(pid) => {}
+        // Keep the PGID separately because `child.id()` becomes unavailable
+        // after the direct supervisor is reaped while descendants may remain.
+        match self.process_group_id {
+            Some(pgid) if kill_process_group(pgid) => {}
             _ => {
                 let _ = self.child.start_kill();
             }
@@ -503,6 +506,10 @@ impl AcpClient {
         configure_no_window(&mut cmd);
 
         let mut child = cmd.spawn()?;
+        #[cfg(unix)]
+        let process_group_id = child.id();
+        #[cfg(not(unix))]
+        let process_group_id = None;
 
         let stdin = child
             .stdin
@@ -515,6 +522,7 @@ impl AcpClient {
 
         Ok(Self {
             child,
+            process_group_id,
             stdin,
             reader: FramedRead::new(stdout, LinesCodec::new_with_max_length(MAX_LINE_SIZE)),
             next_id: 0,
@@ -1987,8 +1995,8 @@ impl Drop for AcpClient {
         // Best-effort SIGKILL + reap. We cannot `await` in Drop (sync context).
         // Kill the process group when possible so subprocesses don't leak.
         // Callers SHOULD still call `shutdown().await` for guaranteed reaping.
-        match self.child.id() {
-            Some(pid) if kill_process_group(pid) => {}
+        match self.process_group_id {
+            Some(pgid) if kill_process_group(pgid) => {}
             _ => {
                 let _ = self.child.start_kill();
             }
@@ -2061,6 +2069,126 @@ mod tests {
         assert_eq!(default, crate::MODELS_TIMEOUT);
         assert_eq!(model_probe_timeout_for_agent("hermes"), hermes);
         assert_eq!(model_probe_timeout_for_agent("hermes-agent"), hermes);
+    }
+
+    #[cfg(unix)]
+    struct ProcessGroupTestGuard {
+        pgid: u32,
+        temp_dir: std::path::PathBuf,
+    }
+
+    #[cfg(unix)]
+    impl Drop for ProcessGroupTestGuard {
+        fn drop(&mut self) {
+            let _ = kill_process_group(self.pgid);
+            let _ = std::fs::remove_dir_all(&self.temp_dir);
+        }
+    }
+
+    #[cfg(unix)]
+    fn process_state(pid: u32) -> Option<String> {
+        let output = std::process::Command::new("/bin/ps")
+            .args(["-o", "stat=", "-p", &pid.to_string()])
+            .output()
+            .ok()?;
+        let state = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        (!state.is_empty()).then_some(state)
+    }
+
+    #[cfg(unix)]
+    fn live_processes(pids: &[u32]) -> Vec<(u32, String)> {
+        pids.iter()
+            .filter_map(|pid| {
+                process_state(*pid)
+                    .filter(|state| !state.starts_with('Z'))
+                    .map(|state| (*pid, state))
+            })
+            .collect()
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn hermes_supervisor_fallback_shutdown_kills_all_descendants() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp_dir =
+            std::env::temp_dir().join(format!("buzz-acp-hermes-teardown-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let hermes = temp_dir.join("hermes-acp");
+        let descendant = temp_dir.join("descendant.sh");
+        let pid_file = temp_dir.join("descendants.pid");
+        std::fs::write(
+            &descendant,
+            "#!/bin/sh\n/bin/sleep 30 &\ngrandchild=$!\nprintf '%s %s\\n' \"$$\" \"$grandchild\" > \"$1\"\nwait \"$grandchild\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            &hermes,
+            "#!/bin/sh\n\"$2\" \"$1\" &\nchild=$!\nwait \"$child\"\n",
+        )
+        .unwrap();
+        std::fs::set_permissions(&descendant, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::fs::set_permissions(&hermes, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let args = vec![
+            pid_file.to_string_lossy().into_owned(),
+            descendant.to_string_lossy().into_owned(),
+        ];
+        let mut client = AcpClient::spawn(hermes.to_string_lossy().as_ref(), &args, &[], false)
+            .await
+            .unwrap();
+        let supervisor_pid = client.child.id().unwrap();
+        let _cleanup = ProcessGroupTestGuard {
+            pgid: supervisor_pid,
+            temp_dir,
+        };
+
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+        let descendant_pids = loop {
+            if let Ok(contents) = std::fs::read_to_string(&pid_file) {
+                let pids = contents
+                    .split_whitespace()
+                    .filter_map(|value| value.parse::<u32>().ok())
+                    .collect::<Vec<_>>();
+                if pids.len() == 2 {
+                    break pids;
+                }
+            }
+            assert!(
+                tokio::time::Instant::now() < deadline,
+                "fake Hermes did not report its child/grandchild PIDs"
+            );
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        };
+        assert_eq!(
+            live_processes(&descendant_pids).len(),
+            descendant_pids.len(),
+            "test precondition failed: both descendants must be live"
+        );
+
+        client.child.start_kill().unwrap();
+        client.child.wait().await.unwrap();
+        assert!(client.child.id().is_none());
+        assert_eq!(
+            live_processes(&descendant_pids).len(),
+            descendant_pids.len(),
+            "test precondition failed: killing the supervisor must leave descendants live"
+        );
+
+        client.shutdown().await;
+
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(2);
+        let survivors = loop {
+            let survivors = live_processes(&descendant_pids);
+            if survivors.is_empty() || tokio::time::Instant::now() >= deadline {
+                break survivors;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        };
+        assert!(
+            survivors.is_empty(),
+            "shutdown left live process-group descendants: {survivors:?}"
+        );
     }
 
     #[test]
