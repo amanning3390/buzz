@@ -261,7 +261,33 @@ just reset          # ⚠️  Wipe data + recreate
 
 ---
 
+## Community Fork: Buzz for Hermes
+
+This repository also serves as the **Buzz for Hermes** community fork — a
+side-by-side build that integrates native
+[Hermes Agent](https://github.com/NousResearch/hermes-agent) ACP support on top
+of Buzz's merged bring-your-own-harness (BYOH) architecture.
+
+**This is not an official Block or Nous Research release.**
+
+### What the fork adds
+
+Buzz PR [#2773](https://github.com/block/buzz/pull/2773) merged generic BYOH
+into `main`, with Hermes as a bundled tier-2 preset. The fork builds on that and
+adds only what generic BYOH does not yet provide for Hermes:
+
+1. **Packaged release sidecars** — real executables in release bundles
+2. **45-second cold-start budget** for native `hermes-acp` model discovery
+3. **MCP host isolation** (`HERMES_ACP_SKIP_CONFIGURED_MCP=1`)
+4. **Process-group-safe teardown** — no orphaned Hermes/MCP descendants
+
+See [COMMUNITY_FORK.md](COMMUNITY_FORK.md) and
+[PROGRESS.md](PROGRESS.md) for details.
+
+---
+
 <p align="center">
   <sub>Buzz 🐝</sub><br>
-  <sub>Apache 2.0 · Built by <a href="https://block.xyz">Block, Inc.</a></sub>
+  <sub>Apache 2.0 · Built by <a href="https://block.xyz">Block, Inc.</a></sub><br>
+  <sub>Community fork (Buzz for Hermes) · Not affiliated with Block or Nous Research</sub>
 </p>

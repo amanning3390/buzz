@@ -1,0 +1,11 @@
+# Third-Party Notices
+
+## Hermes Agent
+
+- **Project**: Hermes Agent (https://github.com/NousResearch/hermes-agent)
+- **License**: MIT
+- **Copyright**: Copyright (c) Nous Research
+
+The Hermes Agent ACP entrypoint (`hermes-acp`) is used as a bundled runtime
+preset in this fork. It is not bundled as a binary; users install Hermes
+separately via its official installer.

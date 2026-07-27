@@ -575,6 +575,38 @@ usage.
 
 ---
 
+## Community Fork: Buzz for Hermes
+
+This repo is also the **Buzz for Hermes** community fork, based on the merged
+BYOH architecture (#2773). The fork adds Hermes-specific runtime contracts that
+generic BYOH does not yet provide.
+
+### Fork-specific rules
+
+- **Base**: `block/buzz:main` at commit `95fdf9788` (merged #2773). Do not
+  rebase onto stable `v0.4.26` — it predates BYOH.
+- **Hermes preset**: Use #2773's bundled tier-2 preset (`hermes-acp`). Do not
+  add a competing harness registry.
+- **Cold-start**: `model_probe_timeout_for_agent()` in
+  `crates/buzz-acp/src/acp.rs` gives `hermes`, `hermes-agent`, and `hermes-acp`
+  a 45-second budget; all other runtimes keep the 10-second default.
+- **MCP isolation**: `acp_env_for_agent()` sets
+  `HERMES_ACP_SKIP_CONFIGURED_MCP=1` at `AcpClient::spawn`.
+- **Teardown**: `process_group_id` is captured at spawn and used by both
+  `shutdown()` and `Drop` so descendants are terminated after the supervisor
+  is reaped.
+- **Identity**: Local test builds use `xyz.hermeshub.buzz.byoh-test` and
+  scheme `buzz-hermes-test` to avoid colliding with the official app.
+- **DCO**: All commits use `-s` (Signed-off-by).
+
+### Fork docs
+
+- [COMMUNITY_FORK.md](COMMUNITY_FORK.md) — what the fork does
+- [PROGRESS.md](PROGRESS.md) — verification record
+- [docs/plans/2026-07-27-buzz-byoh-hermes-integration.md](docs/plans/2026-07-27-buzz-byoh-hermes-integration.md) — active plan
+
+---
+
 ## See Also
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — setup, code style, PR process, how to add event kinds / CLI subcommands / HTTP endpoints
