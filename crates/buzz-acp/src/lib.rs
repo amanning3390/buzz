@@ -60,7 +60,7 @@ fn is_subcommand(name: &str) -> bool {
 }
 
 /// Timeout for lightweight helper subcommands (spawn + initialize + model/method probes).
-const MODELS_TIMEOUT: Duration = Duration::from_secs(10);
+pub(crate) const MODELS_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Timeout for `buzz-acp authenticate`. Browser-based vendor auth can require
 /// human interaction, so it must not share the short probe timeout.
@@ -3897,6 +3897,7 @@ fn extract_auth_methods(init_result: &serde_json::Value) -> Vec<serde_json::Valu
 
 /// `buzz-acp auth-methods` — spawn an adapter, initialize it, print authMethods.
 async fn run_auth_methods(args: AuthMethodsArgs) -> Result<()> {
+    let probe_timeout = acp::model_probe_timeout_for_agent(&args.agent.agent_command);
     let mut client = match spawn_auth_client(&args.agent).await {
         Ok(c) => c,
         Err(e) => {
@@ -3905,7 +3906,7 @@ async fn run_auth_methods(args: AuthMethodsArgs) -> Result<()> {
         }
     };
 
-    let init_result = match tokio::time::timeout(MODELS_TIMEOUT, client.initialize()).await {
+    let init_result = match tokio::time::timeout(probe_timeout, client.initialize()).await {
         Ok(Ok(result)) => result,
         Ok(Err(e)) => {
             client.shutdown().await;
@@ -3914,7 +3915,7 @@ async fn run_auth_methods(args: AuthMethodsArgs) -> Result<()> {
         }
         Err(_) => {
             client.shutdown().await;
-            eprintln!("error: agent timed out ({MODELS_TIMEOUT:?})");
+            eprintln!("error: agent timed out ({probe_timeout:?})");
             std::process::exit(1);
         }
     };
@@ -3945,6 +3946,7 @@ async fn run_auth_methods(args: AuthMethodsArgs) -> Result<()> {
 
 /// `buzz-acp authenticate` — invoke one adapter-owned auth method.
 async fn run_authenticate(args: AuthenticateArgs) -> Result<()> {
+    let probe_timeout = acp::model_probe_timeout_for_agent(&args.agent.agent_command);
     let mut client = match spawn_auth_client(&args.agent).await {
         Ok(c) => c,
         Err(e) => {
@@ -3953,7 +3955,7 @@ async fn run_authenticate(args: AuthenticateArgs) -> Result<()> {
         }
     };
 
-    let init_result = match tokio::time::timeout(MODELS_TIMEOUT, client.initialize()).await {
+    let init_result = match tokio::time::timeout(probe_timeout, client.initialize()).await {
         Ok(Ok(result)) => result,
         Ok(Err(e)) => {
             client.shutdown().await;
@@ -3962,7 +3964,7 @@ async fn run_authenticate(args: AuthenticateArgs) -> Result<()> {
         }
         Err(_) => {
             client.shutdown().await;
-            eprintln!("error: agent initialize timed out ({MODELS_TIMEOUT:?})");
+            eprintln!("error: agent initialize timed out ({probe_timeout:?})");
             std::process::exit(1);
         }
     };
@@ -4005,6 +4007,7 @@ async fn run_authenticate(args: AuthenticateArgs) -> Result<()> {
 async fn run_models(args: ModelsArgs) -> Result<()> {
     use acp::{extract_model_config_options, extract_model_state};
 
+    let probe_timeout = acp::model_probe_timeout_for_agent(&args.agent.agent_command);
     let agent_args = config::normalize_agent_args(&args.agent.agent_command, args.agent.agent_args);
     let cwd = std::env::current_dir()
         .unwrap_or_else(|_| std::path::PathBuf::from("/"))
@@ -4024,7 +4027,7 @@ async fn run_models(args: ModelsArgs) -> Result<()> {
 
     // Initialize + session/new under a timeout. Client is owned above,
     // so shutdown() runs on all paths (success, error, timeout).
-    let protocol_result = tokio::time::timeout(MODELS_TIMEOUT, async {
+    let protocol_result = tokio::time::timeout(probe_timeout, async {
         let init = client.initialize().await?;
         let session = client.session_new_full(&cwd, vec![], None).await?;
         Ok::<_, acp::AcpError>((init, session))
@@ -4040,7 +4043,7 @@ async fn run_models(args: ModelsArgs) -> Result<()> {
         }
         Err(_) => {
             client.shutdown().await;
-            eprintln!("error: agent timed out ({MODELS_TIMEOUT:?})");
+            eprintln!("error: agent timed out ({probe_timeout:?})");
             std::process::exit(1);
         }
     };
