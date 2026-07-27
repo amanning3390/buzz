@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Buzz",
-  "version": "0.4.26",
-  "identifier": "xyz.block.buzz.app",
+  "productName": "Buzz for Hermes",
+  "version": "0.4.26-byoh.95fdf978",
+  "identifier": "xyz.hermeshub.buzz.byoh-test",
   "build": {
     "beforeDevCommand": {
       "script": "exec ./node_modules/.bin/vite",
@@ -45,7 +45,7 @@
     },
     "deep-link": {
       "desktop": {
-        "schemes": ["buzz"]
+        "schemes": ["buzz-hermes-test"]
       }
     }
   },
