@@ -2,7 +2,10 @@
 # install-hermes-runtime.sh — Isolated Hermes companion installer for Buzz for Hermes.
 #
 # Installs a pinned native Hermes checkout into an inactive version directory
-# under ~/Library/Application Support/Buzz for Hermes/runtimes/hermes/<commit>/.
+# under the platform-appropriate application support directory:
+#   macOS:  ~/Library/Application Support/Buzz for Hermes
+#   Linux:  ${XDG_DATA_HOME:-~/.local/share}/Buzz for Hermes
+#
 # Does NOT touch ~/.local/bin/hermes, ~/.hermes/hermes-agent, or user credentials.
 # Reads the user's normal ~/.hermes config/auth at runtime only.
 set -euo pipefail
@@ -11,9 +14,45 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 MANIFEST="$REPO_ROOT/desktop/hermes-runtime.json"
 
+# --- Platform detection ---
+detect_platform() {
+    local os
+    os="$(uname -s)"
+    case "$os" in
+        Darwin)  echo "macos" ;;
+        Linux)   echo "linux" ;;
+        *)       echo "unknown" ;;
+    esac
+}
+
+PLATFORM="$(detect_platform)"
+
+# --- Platform-specific helpers ---
+if [ "$PLATFORM" = "macos" ]; then
+    SHA_CMD="shasum -a 256"
+    SHA_AWK='{print $1}'
+elif [ "$PLATFORM" = "linux" ]; then
+    SHA_CMD="sha256sum"
+    SHA_AWK='{print $1}'
+else
+    echo "ERROR: Unsupported platform: $(uname -s)" >&2
+    exit 1
+fi
+
+compute_sha() {
+    $SHA_CMD "$1" | awk "$SHA_AWK"
+}
+
 # --- Configuration ---
-APP_SUPPORT_DIR="${BUZZ_HERMES_APP_SUPPORT:-$HOME/Library/Application Support/Buzz for Hermes}"
+if [ "$PLATFORM" = "macos" ]; then
+    DEFAULT_APP_SUPPORT="$HOME/Library/Application Support/Buzz for Hermes"
+else
+    DEFAULT_APP_SUPPORT="${XDG_DATA_HOME:-$HOME/.local/share}/buzz-for-hermes"
+fi
+
+APP_SUPPORT_DIR="${BUZZ_HERMES_APP_SUPPORT:-$DEFAULT_APP_SUPPORT}"
 RUNTIMES_DIR="$APP_SUPPORT_DIR/runtimes/hermes"
+
 MANIFEST_REPO="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['repository'])")"
 MANIFEST_COMMIT="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['commit'])")"
 MANIFEST_TAG="$(python3 -c "import json; print(json.load(open('$MANIFEST'))['tag'])")"
@@ -48,7 +87,7 @@ if command -v hermes >/dev/null 2>&1; then
 fi
 OFFICIAL_CHECKSUM_BEFORE=""
 if [ -n "$OFFICIAL_HERMES" ] && [ -f "$OFFICIAL_HERMES" ]; then
-  OFFICIAL_CHECKSUM_BEFORE="$(shasum -a 256 "$OFFICIAL_HERMES" | awk '{print $1}')"
+  OFFICIAL_CHECKSUM_BEFORE="$(compute_sha "$OFFICIAL_HERMES")"
 fi
 
 # --- Clone the exact Hermes commit ---
@@ -73,9 +112,12 @@ fi
 mv "$TMPDIR_CLONE/source" "$RUNTIME_VERSION_DIR"
 touch "$INSTALLING_MARKER"
 
+# cd to runtime source since the old cwd was moved
+cd "$RUNTIME_VERSION_DIR"
+
 # --- Staged install (companion-only bootstrap home) ---
 COMPANION_BOOTSTRAP_HOME="$RUNTIME_VERSION_DIR/bootstrap-home"
-RUNTIME_SOURCE="$RUNTIME_VERSION_DIR/source"
+RUNTIME_SOURCE="$RUNTIME_VERSION_DIR"
 
 for stage in prerequisites venv python-deps; do
   log "Install stage: $stage..."
@@ -100,7 +142,7 @@ HERMES_HOME="$COMPANION_BOOTSTRAP_HOME" "$HERMES_BIN" --version >/dev/null 2>&1 
 
 # --- Verify official hermes binary unchanged ---
 if [ -n "$OFFICIAL_HERMES" ] && [ -f "$OFFICIAL_HERMES" ]; then
-  OFFICIAL_CHECKSUM_AFTER="$(shasum -a 256 "$OFFICIAL_HERMES" | awk '{print $1}')"
+  OFFICIAL_CHECKSUM_AFTER="$(compute_sha "$OFFICIAL_HERMES")"
   [ "$OFFICIAL_CHECKSUM_BEFORE" = "$OFFICIAL_CHECKSUM_AFTER" ] || \
     die "Official hermes binary was modified! Aborting."
 fi

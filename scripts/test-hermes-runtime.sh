@@ -2,7 +2,29 @@
 # test-hermes-runtime.sh — Verify the installed companion Hermes runtime works.
 set -euo pipefail
 
-APP_SUPPORT_DIR="${BUZZ_HERMES_APP_SUPPORT:-$HOME/Library/Application Support/Buzz for Hermes}"
+# --- Platform detection ---
+detect_platform() {
+    local os
+    os="$(uname -s)"
+    case "$os" in
+        Darwin)  echo "macos" ;;
+        Linux)   echo "linux" ;;
+        *)       echo "unknown" ;;
+    esac
+}
+
+PLATFORM="$(detect_platform)"
+
+if [ "$PLATFORM" = "macos" ]; then
+    DEFAULT_APP_SUPPORT="$HOME/Library/Application Support/Buzz for Hermes"
+elif [ "$PLATFORM" = "linux" ]; then
+    DEFAULT_APP_SUPPORT="${XDG_DATA_HOME:-$HOME/.local/share}/buzz-for-hermes"
+else
+    echo "ERROR: Unsupported platform: $(uname -s)" >&2
+    exit 1
+fi
+
+APP_SUPPORT_DIR="${BUZZ_HERMES_APP_SUPPORT:-$DEFAULT_APP_SUPPORT}"
 RUNTIMES_DIR="$APP_SUPPORT_DIR/runtimes/hermes"
 CURRENT_JSON="$RUNTIMES_DIR/current.json"
 

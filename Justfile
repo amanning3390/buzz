@@ -229,7 +229,7 @@ desktop-tauri-test-compiled-flags: _ensure-sidecar-stubs
 # Build the full desktop Tauri app locally (unsigned, for testing)
 # Uses the same sidecar build/bundle sequence as the official release workflows.
 # pnpm install is unconditional here: release builds must start from a clean dep tree.
-desktop-release-build target="aarch64-apple-darwin":
+desktop-release-build target=`rustc -vV | sed -n 's|host: ||p'`:
     #!/usr/bin/env bash
     set -euo pipefail
     TARGET={{target}}

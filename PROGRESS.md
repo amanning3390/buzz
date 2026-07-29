@@ -1,5 +1,34 @@
 # Buzz for Hermes — Progress Log
 
+## 2026-07-28: Linux support
+
+### Added
+
+- **Platform-aware companion runtime installer** (`scripts/install-hermes-runtime.sh`)
+  - Detects macOS vs Linux, uses XDG_DATA_HOME on Linux
+  - Platform-appropriate SHA commands (`shasum` on macOS, `sha256sum` on Linux)
+- **Linux source installer** (`scripts/install-linux-source.sh`)
+  - Builds AppImage + .deb, installs to `~/.local/bin`
+  - Creates `.desktop` launcher, wires companion runtime into PATH
+  - Distro-specific prerequisite guidance (Arch, Ubuntu, Fedora)
+- **Linux maintenance scripts:**
+  - `scripts/update-linux-source.sh` — tag-based atomic update
+  - `scripts/repair-linux-source.sh` — rebuild current tag
+  - `scripts/uninstall-linux.sh` — full cleanup
+  - `scripts/uninstall-hermes-runtime.sh` — platform-aware runtime removal
+- **Tauri config** — added `bundle.linux` with AppImage + deb targets
+- **Justfile** — `desktop-release-build` now auto-detects host triple
+- **Docs** — README, AGENTS.md, COMMUNITY_FORK.md updated for Linux
+
+### Verified
+
+- All 5 Rust sidecars compile cleanly on `x86_64-unknown-linux-gnu`
+- Full Tauri desktop build succeeds — 164MB binary, 91MB `.deb`
+- Binary launches and runs natively on Arch Linux (identity, media proxy, STT/TTS download)
+- Companion Hermes runtime installs and verifies on Linux (XDG_DATA_HOME path, space-free)
+- Binary isolation confirmed — companion runtime hash differs from system `hermes`
+- `current.json` atomic pointer works correctly
+
 ## 2026-07-23: End-to-end execution
 
 ### PR Status

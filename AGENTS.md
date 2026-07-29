@@ -16,7 +16,7 @@ A community fork of Buzz that:
 1. Registers `hermes acp` as a first-class managed agent runtime
 2. Shows all authenticated providers/models in the agent picker
 3. Installs an isolated pinned Hermes companion runtime
-4. Ships a zero-cost macOS source build installer
+4. Ships zero-cost source build installers for macOS and Linux
 
 The fork tracks `block/buzz` upstream and is designed to dissolve once the
 four upstream PRs (2 to Buzz, 2 to Hermes Agent) are merged.
@@ -71,10 +71,14 @@ buzz-fork-release/
 - `desktop/fork-config.json`
 - `scripts/install-hermes-runtime.sh`
 - `scripts/install-macos-source.sh`
+- `scripts/install-linux-source.sh`
 - `scripts/test-hermes-runtime.sh`
 - `scripts/update-macos-source.sh`
+- `scripts/update-linux-source.sh`
 - `scripts/repair-macos-source.sh`
+- `scripts/repair-linux-source.sh`
 - `scripts/uninstall-macos.sh`
+- `scripts/uninstall-linux.sh`
 - `scripts/uninstall-hermes-runtime.sh`
 - `scripts/tests/test_manifest.py`
 - `.github/workflows/ci-hermes.yml`
