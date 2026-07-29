@@ -18,9 +18,11 @@ Buzz is a collaborative coding workspace with real-time channels, agent harnesse
 
 ---
 
-## Quick Start (macOS Apple Silicon, $0)
+## Quick Start
 
-### 1. Prerequisites
+### macOS (Apple Silicon, $0)
+
+#### 1. Prerequisites
 
 | Requirement | How to check | How to install |
 |---|---|---|
@@ -32,7 +34,7 @@ Buzz is a collaborative coding workspace with real-time channels, agent harnesse
 
 No paid tools required. No Apple Developer Program. No Gatekeeper bypass.
 
-### 2. Install
+#### 2. Install
 
 ```bash
 xcode-select -p >/dev/null 2>&1 \
@@ -58,7 +60,7 @@ WORKDIR="$(mktemp -d)" \
 
 **Disk:** ~15 GB during build (can reclaim afterwards: `cargo clean`).
 
-### 3. Configure a Provider
+#### 3. Configure a Provider
 
 Before launching the app, configure at least one AI provider for Hermes:
 
@@ -72,7 +74,7 @@ echo 'ANTHROPIC_API_KEY=sk-ant-...' >> ~/.hermes/.env
 
 Hermes supports 20+ providers. See `hermes model` for the interactive picker.
 
-### 4. Launch and Use
+#### 4. Launch and Use
 
 ```bash
 open ~/Applications/Buzz\ for\ Hermes.app
@@ -84,6 +86,92 @@ In the app:
 3. The model dropdown shows all your authenticated providers and models
 4. Pick one — it persists per-agent
 
+### Linux (x86_64, $0)
+
+#### 1. Prerequisites
+
+| Requirement | How to check | How to install |
+|---|---|---|
+| Linux (kernel 5.0+) | `uname -s` → `Linux` | — |
+| x86_64 (amd64) | `uname -m` → `x86_64` | — |
+| webkit2gtk-4.1 | `pkg-config --exists webkit2gtk-4.1` | `sudo pacman -S webkit2gtk-4.1` (Arch) |
+| libappindicator-gtk3 | `pkg-config --exists appindicator3-0.1` | `sudo pacman -S libappindicator-gtk3` (Arch) |
+| Rust + Cargo | `rustc --version` | [rustup.rs](https://rustup.rs) |
+| Node.js 20+ | `node --version` | `sudo pacman -S nodejs` (Arch) |
+| pnpm | `pnpm --version` | `sudo pacman -S pnpm` (Arch) or `npm i -g pnpm` |
+| Git | `git --version` | `sudo pacman -S git` (Arch) |
+| Python 3.10+ | `python3 --version` | `sudo pacman -S python` (Arch) |
+| 15 GB free disk | `df -h ~` | — |
+
+For other distributions:
+
+| Distro | webkit2gtk | libappindicator |
+|---|---|---|
+| Ubuntu/Debian | `sudo apt install libwebkit2gtk-4.1-dev` | `sudo apt install libappindicator3-dev` |
+| Fedora | `sudo dnf install webkit2gtk4.1-devel` | `sudo dnf install libappindicator-gtk3-devel` |
+
+No paid tools required. No code signing. No package manager needed for the app itself.
+
+#### 2. Install
+
+```bash
+WORKDIR="$(mktemp -d)" \
+  && git clone --depth 1 --branch v0.4.24-hermes.1 \
+    https://github.com/amanning3390/buzz.git "$WORKDIR/buzz-for-hermes" \
+  && "$WORKDIR/buzz-for-hermes/scripts/install-linux-source.sh"
+```
+
+**What happens:**
+1. Clones the immutable release tag
+2. Activates the bundled Hermit toolchain (Rust, Node — no manual install)
+3. Installs JavaScript dependencies via pnpm
+4. Installs the pinned Hermes companion runtime (isolated, verified by SHA)
+5. Builds all five Rust sidecars in release mode
+6. Builds the Tauri desktop app (AppImage)
+7. Installs to `~/.local/bin/buzz-for-hermes`
+8. Creates a `.desktop` launcher for your app menu
+9. Verifies the Hermes runtime
+
+**Time:** ~20-40 min depending on CPU.
+
+**Disk:** ~15 GB during build (can reclaim afterwards: `cargo clean`).
+
+#### 3. Configure a Provider
+
+Before launching the app, configure at least one AI provider for Hermes:
+
+```bash
+hermes setup    # interactive wizard
+# or just set a key:
+echo 'OPENROUTER_API_KEY=sk-or-v1-...' >> ~/.hermes/.env
+# or:
+echo 'ANTHROPIC_API_KEY=sk-ant-...' >> ~/.hermes/.env
+```
+
+Hermes supports 20+ providers. See `hermes model` for the interactive picker.
+
+#### 4. Launch and Use
+
+Launch from your desktop app menu ("Buzz for Hermes"), or from terminal:
+
+```bash
+~/.local/bin/buzz-for-hermes
+```
+
+In the app:
+1. Complete onboarding (you'll see **Hermes Agent** alongside Claude Code and Codex)
+2. Select **Hermes Agent** as your runtime
+3. The model dropdown shows all your authenticated providers and models
+4. Pick one — it persists per-agent
+
+#### Maintenance
+
+```bash
+scripts/update-linux-source.sh    # update to latest release tag
+scripts/repair-linux-source.sh    # rebuild current tag
+scripts/uninstall-linux.sh        # remove everything (preserves ~/.hermes)
+```
+
 ---
 
 ## Architecture
@@ -93,11 +181,11 @@ In the app:
 This fork does **not** modify your official Hermes installation. Instead, it installs a **pinned companion runtime**:
 
 ```
-~/Library/Application Support/Buzz for Hermes/
+macOS: ~/Library/Application Support/Buzz for Hermes/
+Linux:  ${XDG_DATA_HOME:-~/.local/share}/buzz-for-hermes/
 └── runtimes/hermes/
     ├── b405f0a16.../          # immutable version directory (pinned by commit SHA)
-    │   ├── source/            # Hermes Agent source at exact commit
-    │   │   └── venv/bin/hermes
+    │   ├── venv/bin/hermes    # isolated Hermes binary
     │   ├── bootstrap-home/    # isolated install-time HERMES_HOME
     │   └── .installing         # marker removed on success
     └── current.json            # atomic pointer to active version
@@ -133,12 +221,17 @@ And two corresponding Hermes Agent PRs:
 | `desktop/hermes-runtime.json` | Pinned Hermes commit/tag manifest |
 | `desktop/fork-config.json` | Fork identity (bundle ID, deep-link, runtime config) |
 | `desktop/src-tauri/tauri.conf.json` | Product name, version, identifier, deep-link scheme |
-| `scripts/install-hermes-runtime.sh` | Isolated companion installer |
+| `scripts/install-hermes-runtime.sh` | Isolated companion installer (macOS + Linux) |
 | `scripts/install-macos-source.sh` | One-command zero-cost macOS build |
+| `scripts/install-linux-source.sh` | One-command zero-cost Linux build |
 | `scripts/test-hermes-runtime.sh` | Runtime verification |
 | `scripts/update-macos-source.sh` | Atomic tag-based update with rollback |
+| `scripts/update-linux-source.sh` | Atomic tag-based update with rollback (Linux) |
 | `scripts/repair-macos-source.sh` | Rebuild current tag in place |
+| `scripts/repair-linux-source.sh` | Rebuild current tag in place (Linux) |
 | `scripts/uninstall-macos.sh` | App removal (preserves `~/.hermes`) |
+| `scripts/uninstall-linux.sh` | App removal (preserves `~/.hermes`, Linux) |
+| `scripts/uninstall-hermes-runtime.sh` | Companion runtime removal (macOS + Linux) |
 | `.github/workflows/ci-hermes.yml` | Zero-cost fork CI |
 | `.github/workflows/release-hermes-source.yml` | Source release workflow |
 

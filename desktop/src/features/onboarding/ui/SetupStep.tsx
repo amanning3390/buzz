@@ -589,6 +589,49 @@ function RuntimeProvidersSection({
     });
   }
 
+  const runtimeListContent = (() => {
+    if (orderedItems.length > 0) {
+      return (
+        <div
+          className={cn(
+            "grid min-w-0 w-full grid-cols-1 gap-4",
+            orderedItems.length >= 3
+              ? "max-w-[896px] md:grid-cols-3"
+              : "max-w-[592px] md:grid-cols-2",
+          )}
+        >
+          {orderedItems.map((runtime) => (
+            <RuntimeCard
+              installError={installResults[runtime.id]?.error ?? null}
+              isInstalling={
+                installMutation.isPending &&
+                installMutation.variables === runtime.id
+              }
+              key={runtime.id}
+              onInstall={() => handleInstall(runtime.id)}
+              runtime={runtime}
+            />
+          ))}
+        </div>
+      );
+    }
+    if (isChecking) {
+      return <RuntimeProvidersLoadingState />;
+    }
+    if (errorMessage) {
+      return null;
+    }
+    return (
+      <p
+        className="max-w-[560px] rounded-2xl bg-white/70 px-6 py-6 text-sm text-muted-foreground"
+        data-testid="onboarding-acp-empty"
+      >
+        No supported agent harnesses were detected yet. Install Hermes
+        Agent, Claude Code, or Codex, then check again.
+      </p>
+    );
+  })();
+
   return (
     <section className="flex min-h-full w-full flex-col items-center">
       <div className="w-full max-w-[820px] text-center">
@@ -602,39 +645,7 @@ function RuntimeProvidersSection({
       </div>
 
       <div className="flex w-full flex-1 flex-col items-center justify-center gap-8 py-10">
-        {orderedItems.length > 0 ? (
-          <div
-            className={cn(
-              "grid min-w-0 w-full grid-cols-1 gap-4",
-              orderedItems.length >= 3
-                ? "max-w-[896px] md:grid-cols-3"
-                : "max-w-[592px] md:grid-cols-2",
-            )
-          >
-            {orderedItems.map((runtime) => (
-              <RuntimeCard
-                installError={installResults[runtime.id]?.error ?? null}
-                isInstalling={
-                  installMutation.isPending &&
-                  installMutation.variables === runtime.id
-                }
-                key={runtime.id}
-                onInstall={() => handleInstall(runtime.id)}
-                runtime={runtime}
-              />
-            ))}
-          </div>
-        ) : isChecking ? (
-          <RuntimeProvidersLoadingState />
-        ) : errorMessage ? null : (
-          <p
-            className="max-w-[560px] rounded-2xl bg-white/70 px-6 py-6 text-sm text-muted-foreground"
-            data-testid="onboarding-acp-empty"
-          >
-            No supported agent harnesses were detected yet. Install Hermes
-            Agent, Claude Code, or Codex, then check again.
-          </p>
-        )}
+        {runtimeListContent}
 
         {errorMessage ? (
           <p className="max-w-[560px] rounded-2xl bg-destructive/10 px-6 py-3 text-sm text-destructive">

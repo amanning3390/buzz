@@ -16,9 +16,9 @@ ACP runtime path while the generic changes are reviewed upstream.
 
 ## Zero-cost distribution
 
-The supported macOS installation path builds the app locally from an immutable
-source tag, applies an ad-hoc signature to that locally produced app bundle,
-and installs it under `~/Applications`. No Apple Developer Program membership,
+The supported installation paths build the app locally from an immutable
+source tag, apply an ad-hoc signature (macOS) or produce an AppImage (Linux),
+and installs it (to `~/Applications` on macOS, `~/.local/bin` on Linux). No Apple Developer Program membership,
 notarization service, paid CI runner, hosted backend, or paid artifact service
 is required.
 
